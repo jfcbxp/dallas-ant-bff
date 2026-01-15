@@ -6,24 +6,21 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "mongodb"
 }
 
-model HeartRateReading {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  deviceId      Int
-  heartRate     Int
-  beatTime      Int?
-  beatCount     Int?
+model HeartRateCurrent {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId        Int      @unique
+  heartRate       Int
+  beatTime        Int?
+  beatCount       Int?
   manufacturerId Int?
-  serialNumber  Int?
-  stickId       Int
-  receivedAt    DateTime @default(now())
-
-  @@index([deviceId])
-  @@index([receivedAt])
+  serialNumber    Int?
+  stickId         Int
+  receivedAt      DateTime @updatedAt
 }

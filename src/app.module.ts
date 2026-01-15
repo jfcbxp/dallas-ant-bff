@@ -4,8 +4,8 @@ import { AppService } from './app.service';
 import { AntModule } from './ant/ant.module';
 
 @Module({
-  imports: [AntModule],
-  controllers: [AppController],
-  providers: [AppService],
+	imports: [AntModule],
+	controllers: [AppController],
+	providers: [AppService],
 })
 export class AppModule {}
