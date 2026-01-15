@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HeartRateData, AntDeviceData } from './interfaces/heart-rate.interface';
 import { AntStick, HeartRateSensor, AntModule } from './interfaces/ant-types.interface';
@@ -7,6 +7,7 @@ import * as Ant from 'ant-plus';
 @Injectable()
 export class AntService implements OnModuleInit {
 	private readonly cache = new Map<number, HeartRateData>();
+	private readonly logger = new Logger(AntService.name);
 
 	private readonly _prisma: PrismaService;
 
@@ -46,6 +47,7 @@ export class AntService implements OnModuleInit {
 	}
 
 	private async upsertMongo(record: HeartRateData): Promise<void> {
+		this.logger.log('Upserting data:', record);
 		await this._prisma.heartRateCurrent.upsert({
 			where: { deviceId: record.deviceId },
 			update: {
@@ -76,7 +78,9 @@ export class AntService implements OnModuleInit {
 			const record = this.updateCache(stickId, data);
 			if (!record) return;
 
-			void this.upsertMongo(record).catch(() => {});
+			void this.upsertMongo(record).catch((err) => {
+				this.logger.error('Erro ao inserir no MongoDB:', err);
+			});
 
 			if (data.DeviceID !== 0 && devId === 0) {
 				devId = data.DeviceID;

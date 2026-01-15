@@ -1,6 +1,6 @@
 import { Controller, Get, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
-import type { AntService } from './ant.service';
-import type { HeartRateData } from './interfaces/heart-rate.interface';
+import { AntService } from './ant.service';
+import { HeartRateData } from './interfaces/heart-rate.interface';
 
 @Controller('pulseiras')
 export class AntController {
