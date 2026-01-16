@@ -2,7 +2,7 @@ name: NestJS Docker Image
 
 on:
   push:
-    branches: ['develop']
+    branches: ['main']
 
 jobs:
   buildservice:
