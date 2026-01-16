@@ -4,8 +4,10 @@ WORKDIR /app
 
 RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
 
+ENV CXXFLAGS="-std=c++17"
+
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --network-timeout 300000
 
 COPY prisma ./prisma
 COPY src ./src
@@ -23,10 +25,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
+RUN apk add --no-cache eudev-libs
 
 COPY package.json yarn.lock ./
-RUN yarn install --production --frozen-lockfile
+COPY --from=builder /app/node_modules ./node_modules
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/generated ./dist/generated
