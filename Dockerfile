@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++ linux-headers
+RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
 
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
@@ -23,7 +23,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-RUN apk add --no-cache python3 make g++ linux-headers
+RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
 
 COPY package.json yarn.lock ./
 RUN yarn install --production --frozen-lockfile
