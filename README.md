@@ -96,3 +96,90 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+```bash
+
+DATABASE_URL="mongodb://localhost:27017/ant?replicaSet=rs0&directConnection=true" yarn start
+```
+
+```bash
+docker build -t jfcbxp/dallas-ant:latest-arm64 .
+docker push jfcbxp/dallas-ant:latest-arm64
+```
+
+```
+version: '3.8'
+
+services:
+  mongodb:
+    container_name: mongodbreplicaset
+    image: mongo:4.4.18
+    restart: always
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - dallas-ant-network
+
+  mongo-init:
+    container_name: mongo-init
+    image: mongo:4.4.18
+    restart: "no"
+    networks:
+      - dallas-ant-network
+    depends_on:
+      - mongodb
+    command: >
+      bash -c "
+        sleep 10 &&
+        mongo --host mongodbreplicaset:27017 --eval '
+          rs.initiate({
+            _id: \"rs0\",
+            members: [{ _id: 0, host: \"mongodbreplicaset:27017\" }]
+          })
+        ' &&
+        echo 'Replica set initialized'
+      "
+
+  mongoexpress:
+    container_name: mongoexpressreplicaset
+    image: mongo-express:latest
+    restart: always
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_SERVER: mongodbreplicaset
+      ME_CONFIG_MONGODB_URL: mongodb://mongodbreplicaset:27017/?replicaSet=rs0
+    networks:
+      - dallas-ant-network
+    depends_on:
+      - mongo-init
+
+  dallas-ant-bff:
+    container_name: dallas-ant-bff
+    image: jfcbxp/dallas-ant:latest
+    restart: always
+    ports:
+      - "7070:8080"
+    environment:
+      DATABASE_URL: "mongodb://mongodbreplicaset:27017/ant?replicaSet=rs0&directConnection=true"
+      NODE_ENV: production
+      PORT: 8080
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    privileged: true
+    networks:
+      - dallas-ant-network
+    depends_on:
+      - mongo-init
+
+networks:
+  dallas-ant-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+```
