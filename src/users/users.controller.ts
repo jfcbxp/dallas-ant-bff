@@ -1,0 +1,44 @@
+import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto, LinkDeviceDto, UserResponse, UserDeviceResponse } from './interfaces/user-types.interface';
+
+@Controller('usuarios')
+export class UsersController {
+	private readonly _usersService: UsersService;
+
+	constructor(private readonly usersService: UsersService) {
+		this._usersService = usersService;
+	}
+
+	@Post()
+	async createUser(@Body() createUserDto: CreateUserDto): Promise<UserResponse> {
+		if (
+			!createUserDto.name ||
+			!createUserDto.gender ||
+			createUserDto.weight == null ||
+			createUserDto.height == null ||
+			!createUserDto.birthDate
+		) {
+			throw new BadRequestException('Todos os campos são obrigatórios: name, gender, weight, height, birthDate');
+		}
+
+		if (!['M', 'F'].includes(createUserDto.gender)) {
+			throw new BadRequestException('Gender deve ser M ou F');
+		}
+
+		return this._usersService.createUser(createUserDto);
+	}
+
+	@Post('vincular-pulseira')
+	async linkDevice(@Body() linkDeviceDto: LinkDeviceDto): Promise<UserDeviceResponse> {
+		if (!linkDeviceDto.userId || linkDeviceDto.deviceId == null) {
+			throw new BadRequestException('Todos os campos são obrigatórios: userId, deviceId');
+		}
+
+		if (typeof linkDeviceDto.deviceId !== 'number' || linkDeviceDto.deviceId <= 0) {
+			throw new BadRequestException('deviceId deve ser um número positivo');
+		}
+
+		return this._usersService.linkDevice(linkDeviceDto);
+	}
+}

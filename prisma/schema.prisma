@@ -25,3 +25,29 @@ model HeartRateCurrent {
   stickId         Int
   receivedAt      DateTime @updatedAt
 }
+
+model User {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  gender          Gender
+  weight          Float
+  height          Int
+  birthDate       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  userDevice      UserDevice?
+}
+
+model UserDevice {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @unique @db.ObjectId
+  deviceId        Int      @unique
+  linkedAt        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Gender {
+  M
+  F
+}
