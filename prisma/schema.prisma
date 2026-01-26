@@ -26,6 +26,18 @@ model HeartRateCurrent {
   receivedAt      DateTime @updatedAt
 }
 
+model HeartRateRecord {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  deviceId        Int
+  heartRate       Int
+  beatTime        Int?
+  beatCount       Int?
+  manufacturerId Int?
+  serialNumber    Int?
+  stickId         Int
+  receivedAt      DateTime @default(now())
+}
+
 model User {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String
@@ -45,6 +57,45 @@ model UserDevice {
   linkedAt        DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Lesson {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  status          LessonStatus @default(ACTIVE)
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  summary         LessonSummary?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+type LessonSummary {
+  totalDevices     Int
+  deviceResults   DeviceResult[]
+  totalPoints     Int
+  duration        Int
+}
+
+type DeviceResult {
+  deviceId        Int
+  userId          String?
+  totalHeartRateRecords Int
+  zones           ZoneStats
+  points          Int
+  avgHeartRate    Int
+}
+
+type ZoneStats {
+  zone1           Int
+  zone2           Int
+  zone3           Int
+  zone4           Int
+  zone5           Int
+}
+
+enum LessonStatus {
+  ACTIVE
+  ENDED
 }
 
 enum Gender {

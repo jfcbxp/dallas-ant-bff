@@ -47,27 +47,47 @@ export class AntService implements OnModuleInit {
 	}
 
 	private async upsertMongo(record: HeartRateData): Promise<void> {
-		this.logger.log('Upserting data:', record);
-		await this._prisma.heartRateCurrent.upsert({
-			where: { deviceId: record.deviceId },
-			update: {
-				heartRate: record.heartRate,
-				beatTime: record.beatTime,
-				beatCount: record.beatCount,
-				manufacturerId: record.manufacturerId,
-				serialNumber: record.serialNumber,
-				stickId: record.stickId,
-			},
-			create: {
-				deviceId: record.deviceId,
-				heartRate: record.heartRate,
-				beatTime: record.beatTime,
-				beatCount: record.beatCount,
-				manufacturerId: record.manufacturerId,
-				serialNumber: record.serialNumber,
-				stickId: record.stickId,
-			},
-		});
+		this.logger.log('Saving heartrate data:', record);
+
+		try {
+			// Salvar registro histórico para cálculos de gamificação
+			await this._prisma.heartRateRecord.create({
+				data: {
+					deviceId: record.deviceId,
+					heartRate: record.heartRate,
+					beatTime: record.beatTime,
+					beatCount: record.beatCount,
+					manufacturerId: record.manufacturerId,
+					serialNumber: record.serialNumber,
+					stickId: record.stickId,
+				},
+			});
+
+			// Manter HeartRateCurrent atualizado com a última leitura
+			await this._prisma.heartRateCurrent.upsert({
+				where: { deviceId: record.deviceId },
+				update: {
+					heartRate: record.heartRate,
+					beatTime: record.beatTime,
+					beatCount: record.beatCount,
+					manufacturerId: record.manufacturerId,
+					serialNumber: record.serialNumber,
+					stickId: record.stickId,
+				},
+				create: {
+					deviceId: record.deviceId,
+					heartRate: record.heartRate,
+					beatTime: record.beatTime,
+					beatCount: record.beatCount,
+					manufacturerId: record.manufacturerId,
+					serialNumber: record.serialNumber,
+					stickId: record.stickId,
+				},
+			});
+		} catch (error) {
+			this.logger.error('Erro ao salvar dados de frequência cardíaca:', error);
+			throw error;
+		}
 	}
 
 	private openStick(stick: AntStick, stickId: number): void {
