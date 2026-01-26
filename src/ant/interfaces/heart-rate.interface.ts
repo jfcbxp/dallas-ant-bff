@@ -27,6 +27,7 @@ export interface AvailableDevice {
 	serialNumber: number | null;
 	stickId: number;
 	receivedAt: Date | string;
+	user?: UserWithDeviceId;
 }
 
 export interface HeartRateCurrentDb {
@@ -39,4 +40,27 @@ export interface HeartRateCurrentDb {
 	serialNumber: number | null;
 	stickId: number;
 	receivedAt: Date;
+}
+
+export interface UserData {
+	id: string;
+	name: string;
+	gender: string;
+	weight: number;
+	height: number;
+	birthDate: Date;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface UserWithDeviceId {
+	id: string;
+	name: string;
+	gender: 'M' | 'F';
+	weight: number;
+	height: number;
+	birthDate: string;
+	createdAt: string;
+	updatedAt: string;
+	deviceId: number;
 }

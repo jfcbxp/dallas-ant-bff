@@ -1,6 +1,7 @@
-import { Controller, Get, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, ParseIntPipe, NotFoundException, BadRequestException } from '@nestjs/common';
 import { AntService } from './ant.service';
 import { HeartRateData, AvailableDevice } from './interfaces/heart-rate.interface';
+import { LinkDeviceDto, UserDeviceResponse } from '../users/interfaces/user-types.interface';
 
 @Controller('pulseiras')
 export class AntController {
@@ -17,7 +18,20 @@ export class AntController {
 
 	@Get('disponiveis/todas')
 	async getAvailable(): Promise<AvailableDevice[]> {
-		return this._antService.getAvailableDevices();
+		return this._antService.getAvailableDevicesWithUser();
+	}
+
+	@Post('vincular-pulseira')
+	async linkDevice(@Body() linkDeviceDto: LinkDeviceDto): Promise<UserDeviceResponse> {
+		if (!linkDeviceDto.userId || linkDeviceDto.deviceId == null) {
+			throw new BadRequestException('Todos os campos são obrigatórios: userId, deviceId');
+		}
+
+		if (typeof linkDeviceDto.deviceId !== 'number' || linkDeviceDto.deviceId <= 0) {
+			throw new BadRequestException('deviceId deve ser um número positivo');
+		}
+
+		return this._antService.linkDevice(linkDeviceDto);
 	}
 
 	@Get(':deviceId')

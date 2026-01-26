@@ -1,7 +1,8 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HeartRateData, AntDeviceData, AvailableDevice, HeartRateCurrentDb } from './interfaces/heart-rate.interface';
 import { AntStick, HeartRateSensor, AntModule } from './interfaces/ant-types.interface';
+import { LinkDeviceDto, UserDeviceResponse } from '../users/interfaces/user-types.interface';
 import * as Ant from 'ant-plus';
 
 @Injectable()
@@ -44,6 +45,95 @@ export class AntService implements OnModuleInit {
 		} catch (error) {
 			this.logger.error('Error fetching available devices:', error);
 			return [];
+		}
+	}
+
+	async getAvailableDevicesWithUser(): Promise<AvailableDevice[]> {
+		try {
+			const devices = await this.getAvailableDevices();
+
+			return Promise.all(
+				devices.map(async (device) => {
+					const userDevice = await this._prisma.userDevice.findUnique({
+						where: { deviceId: device.deviceId },
+					});
+
+					if (userDevice) {
+						const user = await this._prisma.user.findUnique({
+							where: { id: userDevice.userId },
+						});
+
+						if (user) {
+							device.user = {
+								id: user.id,
+								name: user.name,
+								gender: user.gender as 'M' | 'F',
+								weight: user.weight,
+								height: user.height,
+								birthDate: user.birthDate.toISOString(),
+								createdAt: user.createdAt.toISOString(),
+								updatedAt: user.updatedAt.toISOString(),
+								deviceId: device.deviceId,
+							};
+						}
+					}
+
+					return device;
+				}),
+			);
+		} catch (error) {
+			this.logger.error('Error fetching available devices with user:', error);
+			return [];
+		}
+	}
+
+	async linkDevice(linkDeviceDto: LinkDeviceDto): Promise<UserDeviceResponse> {
+		try {
+			const user = await this._prisma.user.findUnique({
+				where: { id: linkDeviceDto.userId },
+			});
+
+			if (!user) {
+				throw new NotFoundException('Usuário não encontrado');
+			}
+
+			const existingLink = await this._prisma.userDevice.findUnique({
+				where: { deviceId: linkDeviceDto.deviceId },
+			});
+
+			if (existingLink) {
+				throw new ConflictException('Este dispositivo já está vinculado a um usuário');
+			}
+
+			this.logger.log('Linking device:', linkDeviceDto);
+			await this._prisma.userDevice.create({
+				data: {
+					userId: linkDeviceDto.userId,
+					deviceId: linkDeviceDto.deviceId,
+				},
+			});
+
+			const userDevice = await this._prisma.userDevice.findUnique({
+				where: { deviceId: linkDeviceDto.deviceId },
+			});
+
+			if (!userDevice) {
+				throw new Error('UserDevice not found after creation');
+			}
+
+			return {
+				id: userDevice.id,
+				userId: userDevice.userId,
+				deviceId: userDevice.deviceId,
+				linkedAt: userDevice.linkedAt.toISOString(),
+				updatedAt: userDevice.updatedAt.toISOString(),
+			};
+		} catch (error) {
+			this.logger.error('Error linking device:', error);
+			if (error instanceof NotFoundException || error instanceof ConflictException) {
+				throw error;
+			}
+			throw new BadRequestException('Erro ao vincular dispositivo ao usuário');
 		}
 	}
 

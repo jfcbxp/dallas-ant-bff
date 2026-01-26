@@ -1,14 +1,6 @@
-import { Injectable, ConflictException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-	CreateUserDto,
-	LinkDeviceDto,
-	UserResponse,
-	UserDeviceResponse,
-	UserDevice,
-	User,
-	UserWithDeviceId,
-} from './interfaces/user-types.interface';
+import { CreateUserDto, UserResponse, UserDeviceResponse, UserDevice, User, UserWithDeviceId } from './interfaces/user-types.interface';
 
 @Injectable()
 export class UsersService {
@@ -49,48 +41,7 @@ export class UsersService {
 		}
 	}
 
-	async linkDevice(linkDeviceDto: LinkDeviceDto): Promise<UserDeviceResponse> {
-		const user = await this._prisma.user.findUnique({
-			where: { id: linkDeviceDto.userId },
-		});
-
-		if (!user) {
-			throw new NotFoundException('Usuário não encontrado');
-		}
-
-		const existingLink = await this._prisma.userDevice.findUnique({
-			where: { deviceId: linkDeviceDto.deviceId },
-		});
-
-		if (existingLink) {
-			throw new ConflictException('Este dispositivo já está vinculado a um usuário');
-		}
-
-		try {
-			this.logger.log('Linking device:', linkDeviceDto);
-			await this._prisma.userDevice.create({
-				data: {
-					userId: linkDeviceDto.userId,
-					deviceId: linkDeviceDto.deviceId,
-				},
-			});
-
-			const userDevice = await this._prisma.userDevice.findUnique({
-				where: { deviceId: linkDeviceDto.deviceId },
-			});
-
-			if (!userDevice) {
-				throw new Error('UserDevice not found after creation');
-			}
-
-			return this.mapUserDeviceToResponse(userDevice);
-		} catch (error) {
-			this.logger.error('Error linking device:', error);
-			throw new BadRequestException('Erro ao vincular dispositivo ao usuário');
-		}
-	}
-
-	async getLinkedDevices(): Promise<{ user: UserWithDeviceId }[]> {
+	async getUsers(): Promise<{ user: UserWithDeviceId }[]> {
 		try {
 			this.logger.log('Fetching all linked devices');
 
