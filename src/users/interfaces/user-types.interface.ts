@@ -48,3 +48,7 @@ export interface User {
 	createdAt: Date;
 	updatedAt: Date;
 }
+
+export interface UserWithDeviceId extends UserResponse {
+	deviceId: number;
+}

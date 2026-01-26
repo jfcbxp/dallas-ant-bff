@@ -1,6 +1,14 @@
 import { Injectable, ConflictException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, LinkDeviceDto, UserResponse, UserDeviceResponse, UserDevice, User } from './interfaces/user-types.interface';
+import {
+	CreateUserDto,
+	LinkDeviceDto,
+	UserResponse,
+	UserDeviceResponse,
+	UserDevice,
+	User,
+	UserWithDeviceId,
+} from './interfaces/user-types.interface';
 
 @Injectable()
 export class UsersService {
@@ -79,6 +87,37 @@ export class UsersService {
 		} catch (error) {
 			this.logger.error('Error linking device:', error);
 			throw new BadRequestException('Erro ao vincular dispositivo ao usuário');
+		}
+	}
+
+	async getLinkedDevices(): Promise<{ user: UserWithDeviceId }[]> {
+		try {
+			this.logger.log('Fetching all linked devices');
+
+			const userDevices = await this._prisma.userDevice.findMany();
+
+			const result: { user: UserWithDeviceId }[] = [];
+
+			for (const userDevice of userDevices) {
+				const user = await this._prisma.user.findUnique({
+					where: { id: userDevice.userId },
+				});
+
+				if (user) {
+					const userResponse = this.mapUserToResponse(user);
+					result.push({
+						user: {
+							...userResponse,
+							deviceId: userDevice.deviceId,
+						},
+					});
+				}
+			}
+
+			return result;
+		} catch (error) {
+			this.logger.error('Error fetching linked devices:', error);
+			throw new BadRequestException('Erro ao buscar dispositivos vinculados');
 		}
 	}
 

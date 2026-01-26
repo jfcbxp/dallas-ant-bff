@@ -1,6 +1,6 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, LinkDeviceDto, UserResponse, UserDeviceResponse } from './interfaces/user-types.interface';
+import { CreateUserDto, LinkDeviceDto, UserResponse, UserDeviceResponse, UserWithDeviceId } from './interfaces/user-types.interface';
 
 @Controller('usuarios')
 export class UsersController {
@@ -40,5 +40,10 @@ export class UsersController {
 		}
 
 		return this._usersService.linkDevice(linkDeviceDto);
+	}
+
+	@Get('vincular-pulseira')
+	async getLinkedDevices(): Promise<{ user: UserWithDeviceId }[]> {
+		return this._usersService.getLinkedDevices();
 	}
 }
