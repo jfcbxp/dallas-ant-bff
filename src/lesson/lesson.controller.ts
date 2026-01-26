@@ -1,4 +1,4 @@
-import { Controller, Post, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Logger } from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import type { LessonEndResponse } from './lesson.service';
 
@@ -14,9 +14,9 @@ export class LessonController {
 		return await this.lessonService.startLesson();
 	}
 
-	@Post('end/:lessonId')
-	async endLesson(@Param('lessonId') lessonId: string): Promise<LessonEndResponse> {
-		this.logger.log('Ending lesson endpoint called for:', lessonId);
-		return await this.lessonService.endLesson(lessonId);
+	@Post('end')
+	async endLesson(): Promise<LessonEndResponse> {
+		this.logger.log('Ending lesson endpoint called');
+		return await this.lessonService.endLesson();
 	}
 }

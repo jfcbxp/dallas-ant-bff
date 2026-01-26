@@ -36,7 +36,7 @@ export class LessonService {
 		this._prisma = prisma;
 	}
 
-	async startLesson(): Promise<{ lessonId: string; startedAt: string }> {
+	async startLesson(): Promise<{ lessonId: string; startedAt: Date }> {
 		try {
 			this.logger.log('Starting new lesson');
 
@@ -65,21 +65,17 @@ export class LessonService {
 		}
 	}
 
-	async endLesson(lessonId: string): Promise<LessonEndResponse> {
+	async endLesson(): Promise<LessonEndResponse> {
 		try {
-			this.logger.log('Ending lesson:', lessonId);
+			this.logger.log('Ending active lesson');
 
-			// Verificar se existe aula ativa
-			const lesson = await this._prisma.lesson.findUnique({
-				where: { id: lessonId },
+			// Buscar a aula ativa
+			const lesson = await this._prisma.lesson.findFirst({
+				where: { status: 'ACTIVE' },
 			});
 
 			if (!lesson) {
-				throw new NotFoundException('Aula não encontrada');
-			}
-
-			if (lesson.status !== 'ACTIVE') {
-				throw new BadRequestException('Aula já foi encerrada');
+				throw new NotFoundException('Nenhuma aula ativa encontrada');
 			}
 
 			// Ler todos os HeartRateCurrent
@@ -92,21 +88,20 @@ export class LessonService {
 
 			// Buscar informações de usuários
 			const userDevices = await this._prisma.userDevice.findMany({});
-			const deviceToUserMap = new Map(userDevices.map((ud: any) => [ud.deviceId, ud.userId]));
-
-			// Calcular resultados por pulseira
+			const deviceToUserMap = new Map(
+				userDevices.map((ud: any) => [(ud as { deviceId: number }).deviceId, (ud as { userId: string }).userId]),
+			);
 			const deviceResults = new Map<number, DeviceResult>();
 
 			for (const current of heartRateCurrents) {
-				const deviceRecords = heartRateRecords.filter((r: any) => r.deviceId === current.deviceId);
-
+				const deviceRecords = heartRateRecords.filter((r: any) => (r as { deviceId: number }).deviceId === current.deviceId);
 				if (deviceRecords.length === 0) continue;
 
 				const zones = this.calculateZones(current, deviceRecords);
 				const points = this.calculateGameification(zones, deviceRecords.length);
-				const avgHeartRate = Math.round(deviceRecords.reduce((sum: number, r: any) => sum + r.heartRate, 0) / deviceRecords.length);
-
-				const userId = deviceToUserMap.get(current.deviceId) as string | undefined;
+				const totalHeartRate = deviceRecords.reduce((sum: number, r: any) => sum + (r as { heartRate: number }).heartRate, 0);
+				const avgHeartRate = Math.round(totalHeartRate / deviceRecords.length);
+				const userId = deviceToUserMap.get(current.deviceId);
 
 				deviceResults.set(current.deviceId, {
 					deviceId: current.deviceId,
@@ -120,12 +115,14 @@ export class LessonService {
 
 			const totalPoints = Array.from(deviceResults.values()).reduce((sum, result) => sum + result.points, 0);
 
-			// Calcular duração
-			const duration = Math.round((new Date().getTime() - new Date(lesson.startedAt).getTime()) / 1000 / 60); // em minutos
+			// Calcular duração em minutos
+			const startTime = new Date(lesson.startedAt).getTime();
+			const endTime = Date.now();
+			const duration = Math.round((endTime - startTime) / 1000 / 60);
 
 			// Atualizar aula
 			const updatedLesson = await this._prisma.lesson.update({
-				where: { id: lessonId },
+				where: { id: lesson.id },
 				data: {
 					status: 'ENDED',
 					endedAt: new Date(),
@@ -157,8 +154,9 @@ export class LessonService {
 		// Calcular FCmax baseado no modelo de Karvonen
 		// Para simplificar, usamos 220 - idade como FCmax
 		// Aqui vamos usar a frequência máxima registrada como referência
-		const maxHeartRate = Math.max(...records.map((r: any) => r.heartRate));
-		const fcmax = maxHeartRate > 0 ? maxHeartRate : 180; // valor padrão
+		const heartRates = records.map((r: any) => (r as { heartRate: number }).heartRate);
+		const maxHeartRate = heartRates.length > 0 ? Math.max(...heartRates) : 180;
+		const fcmax = maxHeartRate > 0 ? maxHeartRate : 180;
 
 		const zones: ZoneStats = {
 			zone1: 0,
@@ -171,7 +169,8 @@ export class LessonService {
 		// Zonas ANT+ baseadas em percentual de FCmax
 		// Z1: 50-60%, Z2: 60-70%, Z3: 70-80%, Z4: 80-90%, Z5: 90-100%
 		for (const record of records) {
-			const percentage = (record.heartRate / fcmax) * 100;
+			const { heartRate } = record as { heartRate: number };
+			const percentage = (heartRate / fcmax) * 100;
 
 			if (percentage >= 90) zones.zone5++;
 			else if (percentage >= 80) zones.zone4++;
