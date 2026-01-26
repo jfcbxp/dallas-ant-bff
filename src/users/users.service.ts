@@ -41,13 +41,13 @@ export class UsersService {
 		}
 	}
 
-	async getUsers(): Promise<{ user: UserWithDeviceId }[]> {
+	async getUsers(): Promise<UserWithDeviceId[]> {
 		try {
 			this.logger.log('Fetching all linked devices');
 
 			const userDevices = await this._prisma.userDevice.findMany();
 
-			const result: { user: UserWithDeviceId }[] = [];
+			const result: UserWithDeviceId[] = [];
 
 			for (const userDevice of userDevices) {
 				const user = await this._prisma.user.findUnique({
@@ -57,10 +57,8 @@ export class UsersService {
 				if (user) {
 					const userResponse = this.mapUserToResponse(user);
 					result.push({
-						user: {
-							...userResponse,
-							deviceId: userDevice.deviceId,
-						},
+						...userResponse,
+						deviceId: userDevice.deviceId,
 					});
 				}
 			}

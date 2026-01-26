@@ -30,7 +30,7 @@ export class UsersController {
 	}
 
 	@Get()
-	async getUsers(): Promise<{ user: UserWithDeviceId }[]> {
+	async getUsers(): Promise<UserWithDeviceId[]> {
 		return this._usersService.getUsers();
 	}
 }

@@ -16,7 +16,7 @@ export class AntController {
 		return this._antService.getAll();
 	}
 
-	@Get('disponiveis/todas')
+	@Get('todas')
 	async getAvailable(): Promise<AvailableDevice[]> {
 		return this._antService.getAvailableDevicesWithUser();
 	}
