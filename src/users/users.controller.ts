@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, LinkDeviceDto, UserResponse, UserDeviceResponse, UserWithDeviceId } from './interfaces/user-types.interface';
 
@@ -45,5 +45,17 @@ export class UsersController {
 	@Get('vincular-pulseira')
 	async getLinkedDevices(): Promise<{ user: UserWithDeviceId }[]> {
 		return this._usersService.getLinkedDevices();
+	}
+
+	@Delete('vincular-pulseira/:deviceId')
+	async unlinkDevice(@Param('deviceId') deviceId: string): Promise<{ message: string }> {
+		const deviceIdNum = parseInt(deviceId, 10);
+
+		if (isNaN(deviceIdNum) || deviceIdNum <= 0) {
+			throw new BadRequestException('deviceId deve ser um número positivo');
+		}
+
+		await this._usersService.unlinkDevice(deviceIdNum);
+		return { message: 'Pulseira desvinculada com sucesso' };
 	}
 }

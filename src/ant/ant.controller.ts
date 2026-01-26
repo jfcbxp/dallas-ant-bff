@@ -1,6 +1,6 @@
 import { Controller, Get, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
 import { AntService } from './ant.service';
-import { HeartRateData } from './interfaces/heart-rate.interface';
+import { HeartRateData, AvailableDevice } from './interfaces/heart-rate.interface';
 
 @Controller('pulseiras')
 export class AntController {
@@ -13,6 +13,11 @@ export class AntController {
 	@Get()
 	getAll(): HeartRateData[] {
 		return this._antService.getAll();
+	}
+
+	@Get('disponiveis/todas')
+	async getAvailable(): Promise<AvailableDevice[]> {
+		return this._antService.getAvailableDevices();
 	}
 
 	@Get(':deviceId')

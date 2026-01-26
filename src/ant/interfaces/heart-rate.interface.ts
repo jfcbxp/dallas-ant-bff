@@ -17,3 +17,26 @@ export interface AntDeviceData {
 	ManId?: number;
 	SerialNumber?: number;
 }
+
+export interface AvailableDevice {
+	deviceId: number;
+	heartRate: number;
+	beatTime: number | null;
+	beatCount: number | null;
+	manufacturerId: number | null;
+	serialNumber: number | null;
+	stickId: number;
+	receivedAt: Date | string;
+}
+
+export interface HeartRateCurrentDb {
+	id: string;
+	deviceId: number;
+	heartRate: number;
+	beatTime: number | null;
+	beatCount: number | null;
+	manufacturerId: number | null;
+	serialNumber: number | null;
+	stickId: number;
+	receivedAt: Date;
+}

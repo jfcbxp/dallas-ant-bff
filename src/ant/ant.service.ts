@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { HeartRateData, AntDeviceData } from './interfaces/heart-rate.interface';
+import { HeartRateData, AntDeviceData, AvailableDevice, HeartRateCurrentDb } from './interfaces/heart-rate.interface';
 import { AntStick, HeartRateSensor, AntModule } from './interfaces/ant-types.interface';
 import * as Ant from 'ant-plus';
 
@@ -26,6 +26,25 @@ export class AntService implements OnModuleInit {
 
 	getByDeviceId(deviceId: number): HeartRateData | undefined {
 		return this.cache.get(deviceId);
+	}
+
+	async getAvailableDevices(): Promise<AvailableDevice[]> {
+		try {
+			const devices = await this._prisma.heartRateCurrent.findMany();
+			return devices.map((device: HeartRateCurrentDb) => ({
+				deviceId: device.deviceId,
+				heartRate: device.heartRate,
+				beatTime: device.beatTime,
+				beatCount: device.beatCount,
+				manufacturerId: device.manufacturerId,
+				serialNumber: device.serialNumber,
+				stickId: device.stickId,
+				receivedAt: device.receivedAt,
+			}));
+		} catch (error) {
+			this.logger.error('Error fetching available devices:', error);
+			return [];
+		}
 	}
 
 	private updateCache(stickId: number, data: AntDeviceData): HeartRateData | undefined {

@@ -145,4 +145,30 @@ export class UsersService {
 		};
 		return record;
 	}
+
+	async unlinkDevice(deviceId: number): Promise<void> {
+		try {
+			this.logger.log('Unlinking device:', deviceId);
+
+			const userDevice = await this._prisma.userDevice.findUnique({
+				where: { deviceId },
+			});
+
+			if (!userDevice) {
+				throw new NotFoundException('Vínculo de pulseira não encontrado');
+			}
+
+			await this._prisma.userDevice.delete({
+				where: { deviceId },
+			});
+
+			this.logger.log('Device unlinked successfully:', deviceId);
+		} catch (error) {
+			this.logger.error('Error unlinking device:', error);
+			if (error instanceof NotFoundException) {
+				throw error;
+			}
+			throw new BadRequestException('Erro ao desvinculear pulseira');
+		}
+	}
 }
