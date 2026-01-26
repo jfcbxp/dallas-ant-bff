@@ -64,16 +64,19 @@ model Lesson {
   status          LessonStatus @default(ACTIVE)
   startedAt       DateTime @default(now())
   endedAt         DateTime?
-  summary         LessonSummary?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
-type LessonSummary {
-  totalDevices     Int
+model LessonResult {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  lessonId        String   @db.ObjectId
+  totalDevices    Int
   deviceResults   DeviceResult[]
   totalPoints     Int
   duration        Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 type DeviceResult {

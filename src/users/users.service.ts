@@ -43,30 +43,28 @@ export class UsersService {
 
 	async getUsers(): Promise<UserWithDeviceId[]> {
 		try {
-			this.logger.log('Fetching all linked devices');
+			this.logger.log('Fetching all users with devices');
 
-			const userDevices = await this._prisma.userDevice.findMany();
+			const users = await this._prisma.user.findMany();
 
 			const result: UserWithDeviceId[] = [];
 
-			for (const userDevice of userDevices) {
-				const user = await this._prisma.user.findUnique({
-					where: { id: userDevice.userId },
+			for (const user of users) {
+				const userDevice = await this._prisma.userDevice.findFirst({
+					where: { userId: user.id },
 				});
 
-				if (user) {
-					const userResponse = this.mapUserToResponse(user);
-					result.push({
-						...userResponse,
-						deviceId: userDevice.deviceId,
-					});
-				}
+				const userResponse = this.mapUserToResponse(user);
+				result.push({
+					...userResponse,
+					deviceId: userDevice?.deviceId || null,
+				});
 			}
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error fetching linked devices:', error);
-			throw new BadRequestException('Erro ao buscar dispositivos vinculados');
+			this.logger.error('Error fetching users:', error);
+			throw new BadRequestException('Erro ao buscar usuários');
 		}
 	}
 

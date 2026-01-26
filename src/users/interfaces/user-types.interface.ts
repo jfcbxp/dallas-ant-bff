@@ -50,5 +50,5 @@ export interface User {
 }
 
 export interface UserWithDeviceId extends UserResponse {
-	deviceId: number;
+	deviceId: number | null;
 }
