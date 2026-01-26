@@ -11,7 +11,7 @@ interface ZoneStats {
 
 interface DeviceResult {
 	deviceId: number;
-	userId?: string;
+	userId?: string | null;
 	totalHeartRateRecords: number;
 	zones: ZoneStats;
 	points: number;
@@ -67,6 +67,10 @@ export class LessonService {
 			// Limpar UserDevice
 			await this._prisma.userDevice.deleteMany({});
 			this.logger.log('UserDevice table cleared');
+
+			// Limpar LessonResult
+			await this._prisma.lessonResult.deleteMany({});
+			this.logger.log('LessonResult table cleared');
 
 			return {
 				lessonId: lesson.id,
@@ -276,12 +280,13 @@ export class LessonService {
 		}
 	}
 
-	async getLessonResult(lessonId: string): Promise<LessonResultResponse> {
+	async getLessonResult(): Promise<LessonResultResponse> {
 		try {
-			this.logger.log('Getting lesson result for lesson:', lessonId);
+			this.logger.log('Getting latest lesson result');
 
 			const result = await this._prisma.lessonResult.findFirst({
-				where: { lessonId },
+				orderBy: { createdAt: 'desc' },
+				take: 1,
 			});
 
 			if (!result) {

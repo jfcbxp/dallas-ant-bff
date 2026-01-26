@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Logger } from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import type { LessonEndResponse, LessonStatusResponse, LessonResultResponse } from './lesson.service';
 
@@ -26,9 +26,9 @@ export class LessonController {
 		return await this.lessonService.getLessonStatus();
 	}
 
-	@Get(':lessonId/result')
-	async getLessonResult(@Param('lessonId') lessonId: string): Promise<LessonResultResponse> {
-		this.logger.log('Getting lesson result for:', lessonId);
-		return await this.lessonService.getLessonResult(lessonId);
+	@Get('result')
+	async getLatestLessonResult(): Promise<LessonResultResponse> {
+		this.logger.log('Getting latest lesson result');
+		return await this.lessonService.getLessonResult();
 	}
 }
