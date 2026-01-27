@@ -9,13 +9,29 @@ interface ZoneStats {
 	zone5: number;
 }
 
+interface UserInfo {
+	id: string;
+	name: string;
+	gender: string;
+	weight: number;
+	height: number;
+	birthDate: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 interface DeviceResult {
 	deviceId: number;
-	userId?: string | null;
+	user?: UserInfo;
 	totalHeartRateRecords: number;
 	zones: ZoneStats;
 	points: number;
 	avgHeartRate: number;
+}
+
+interface HeartRateRecordWithDevice {
+	deviceId: number;
+	heartRate: number;
 }
 
 export interface LessonEndResponse {
@@ -117,11 +133,8 @@ export class LessonService {
 		}
 	}
 
-	private calculateZones(current: any, records: any[]): ZoneStats {
-		// Calcular FCmax baseado no modelo de Karvonen
-		// Para simplificar, usamos 220 - idade como FCmax
-		// Aqui vamos usar a frequência máxima registrada como referência
-		const heartRates = records.map((r: any) => (r as { heartRate: number }).heartRate);
+	private calculateZones(records: HeartRateRecordWithDevice[]): ZoneStats {
+		const heartRates = records.map((r) => r.heartRate);
 		const maxHeartRate = heartRates.length > 0 ? Math.max(...heartRates) : 180;
 		const fcmax = maxHeartRate > 0 ? maxHeartRate : 180;
 
@@ -133,10 +146,8 @@ export class LessonService {
 			zone5: 0,
 		};
 
-		// Zonas ANT+ baseadas em percentual de FCmax
-		// Z1: 50-60%, Z2: 60-70%, Z3: 70-80%, Z4: 80-90%, Z5: 90-100%
 		for (const record of records) {
-			const { heartRate } = record as { heartRate: number };
+			const { heartRate } = record;
 			const percentage = (heartRate / fcmax) * 100;
 
 			if (percentage >= 90) zones.zone5++;
@@ -178,12 +189,15 @@ export class LessonService {
 				throw new NotFoundException('Nenhuma aula encontrada');
 			}
 
-			const duration =
-				lesson.status === 'ENDED' && lesson.endedAt
-					? Math.round((new Date(lesson.endedAt).getTime() - new Date(lesson.startedAt).getTime()) / 1000 / 60)
-					: lesson.status === 'ACTIVE'
-						? Math.round((Date.now() - new Date(lesson.startedAt).getTime()) / 1000 / 60)
-						: undefined;
+			let duration: number | undefined;
+			if (lesson.status === 'ENDED' && lesson.endedAt) {
+				const endTime = new Date(lesson.endedAt).getTime();
+				const startTime = new Date(lesson.startedAt).getTime();
+				duration = Math.round((endTime - startTime) / 1000 / 60);
+			} else if (lesson.status === 'ACTIVE') {
+				const startTime = new Date(lesson.startedAt).getTime();
+				duration = Math.round((Date.now() - startTime) / 1000 / 60);
+			}
 
 			return {
 				lessonId: lesson.id,
@@ -219,26 +233,43 @@ export class LessonService {
 				orderBy: { receivedAt: 'asc' },
 			});
 
-			// Buscar informações de usuários
 			const userDevices = await this._prisma.userDevice.findMany({});
-			const deviceToUserMap = new Map(
-				userDevices.map((ud: any) => [(ud as { deviceId: number }).deviceId, (ud as { userId: string }).userId]),
-			);
+			const deviceToUserMap = new Map<number, UserInfo>();
+
+			for (const ud of userDevices) {
+				const user = await this._prisma.user.findUnique({
+					where: { id: ud.userId },
+				});
+
+				if (user) {
+					deviceToUserMap.set(ud.deviceId, {
+						id: user.id,
+						name: user.name,
+						gender: user.gender,
+						weight: user.weight,
+						height: user.height,
+						birthDate: user.birthDate.toISOString(),
+						createdAt: user.createdAt.toISOString(),
+						updatedAt: user.updatedAt.toISOString(),
+					});
+				}
+			}
+
 			const deviceResults = new Map<number, DeviceResult>();
 
 			for (const current of heartRateCurrents) {
-				const deviceRecords = heartRateRecords.filter((r: any) => (r as { deviceId: number }).deviceId === current.deviceId);
+				const deviceRecords = heartRateRecords.filter((r) => r.deviceId === current.deviceId);
 				if (deviceRecords.length === 0) continue;
 
-				const zones = this.calculateZones(current, deviceRecords);
+				const zones = this.calculateZones(deviceRecords);
 				const points = this.calculateGameification(zones, deviceRecords.length);
-				const totalHeartRate = deviceRecords.reduce((sum: number, r: any) => sum + (r as { heartRate: number }).heartRate, 0);
+				const totalHeartRate = deviceRecords.reduce((sum, r) => sum + r.heartRate, 0);
 				const avgHeartRate = Math.round(totalHeartRate / deviceRecords.length);
-				const userId = deviceToUserMap.get(current.deviceId);
+				const userInfo = deviceToUserMap.get(current.deviceId) ?? undefined;
 
 				deviceResults.set(current.deviceId, {
 					deviceId: current.deviceId,
-					userId,
+					user: userInfo,
 					totalHeartRateRecords: deviceRecords.length,
 					zones,
 					points,
@@ -269,7 +300,10 @@ export class LessonService {
 			return {
 				lessonId: result.lessonId,
 				totalDevices: result.totalDevices,
-				deviceResults: result.deviceResults,
+				deviceResults: result.deviceResults.map((dr) => ({
+					...dr,
+					user: dr.user ?? undefined,
+				})),
 				totalPoints: result.totalPoints,
 				duration: result.duration,
 			};
@@ -295,7 +329,10 @@ export class LessonService {
 			return {
 				lessonId: result.lessonId,
 				totalDevices: result.totalDevices,
-				deviceResults: result.deviceResults,
+				deviceResults: result.deviceResults.map((dr) => ({
+					...dr,
+					user: dr.user ?? undefined,
+				})),
 				totalPoints: result.totalPoints,
 				duration: result.duration,
 			};

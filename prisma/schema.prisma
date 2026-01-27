@@ -81,11 +81,22 @@ model LessonResult {
 
 type DeviceResult {
   deviceId        Int
-  userId          String?
+  user            UserData?
   totalHeartRateRecords Int
   zones           ZoneStats
   points          Int
   avgHeartRate    Int
+}
+
+type UserData {
+  id              String
+  name            String
+  gender          String
+  weight          Float
+  height          Int
+  birthDate       String
+  createdAt       String
+  updatedAt       String
 }
 
 type ZoneStats {
