@@ -7,6 +7,7 @@ export interface HeartRateData {
 	serialNumber: number | null;
 	stickId: number;
 	receivedAt: string;
+	user?: UserWithDeviceId;
 }
 
 export interface AntDeviceData {

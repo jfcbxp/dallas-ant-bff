@@ -53,24 +53,23 @@ export class LessonService {
 		try {
 			this.logger.log('Starting new lesson');
 
+			// Limpar histórico de registros
+			await this._prisma.heartRateRecord.deleteMany({});
+			this.logger.log('HeartRateRecord table cleared');
+
+			// Limpar LessonResult
+			await this._prisma.lessonResult.deleteMany({});
+			this.logger.log('LessonResult table cleared');
+
+			await this._prisma.lesson.deleteMany({});
+			this.logger.log('Lesson table cleared');
+
 			// Criar nova aula
 			const lesson = await this._prisma.lesson.create({
 				data: {
 					status: 'ACTIVE',
 				},
 			});
-
-			// Limpar histórico de registros
-			await this._prisma.heartRateRecord.deleteMany({});
-			this.logger.log('HeartRateRecord table cleared');
-
-			// Limpar UserDevice
-			await this._prisma.userDevice.deleteMany({});
-			this.logger.log('UserDevice table cleared');
-
-			// Limpar LessonResult
-			await this._prisma.lessonResult.deleteMany({});
-			this.logger.log('LessonResult table cleared');
 
 			return {
 				lessonId: lesson.id,

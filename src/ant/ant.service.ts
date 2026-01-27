@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HeartRateData, AntDeviceData, AvailableDevice, HeartRateCurrentDb } from './interfaces/heart-rate.interface';
 import { AntStick, HeartRateSensor, AntModule } from './interfaces/ant-types.interface';
@@ -97,29 +97,17 @@ export class AntService implements OnModuleInit {
 				throw new NotFoundException('Usuário não encontrado');
 			}
 
-			const existingLink = await this._prisma.userDevice.findUnique({
-				where: { deviceId: linkDeviceDto.deviceId },
-			});
-
-			if (existingLink) {
-				throw new ConflictException('Este dispositivo já está vinculado a um usuário');
-			}
-
 			this.logger.log('Linking device:', linkDeviceDto);
-			await this._prisma.userDevice.create({
-				data: {
+			const userDevice = await this._prisma.userDevice.upsert({
+				where: { deviceId: linkDeviceDto.deviceId },
+				update: {
+					userId: linkDeviceDto.userId,
+				},
+				create: {
 					userId: linkDeviceDto.userId,
 					deviceId: linkDeviceDto.deviceId,
 				},
 			});
-
-			const userDevice = await this._prisma.userDevice.findUnique({
-				where: { deviceId: linkDeviceDto.deviceId },
-			});
-
-			if (!userDevice) {
-				throw new Error('UserDevice not found after creation');
-			}
 
 			return {
 				id: userDevice.id,
@@ -130,14 +118,14 @@ export class AntService implements OnModuleInit {
 			};
 		} catch (error) {
 			this.logger.error('Error linking device:', error);
-			if (error instanceof NotFoundException || error instanceof ConflictException) {
+			if (error instanceof NotFoundException) {
 				throw error;
 			}
 			throw new BadRequestException('Erro ao vincular dispositivo ao usuário');
 		}
 	}
 
-	private updateCache(stickId: number, data: AntDeviceData): HeartRateData | undefined {
+	private async updateCache(stickId: number, data: AntDeviceData): Promise<HeartRateData | undefined> {
 		if (!data.DeviceID || data.DeviceID === 0) return;
 
 		const record: HeartRateData = {
@@ -150,6 +138,35 @@ export class AntService implements OnModuleInit {
 			stickId,
 			receivedAt: new Date().toISOString(),
 		};
+
+		// Buscar informações do usuário vinculado ao device
+		try {
+			const userDevice = await this._prisma.userDevice.findUnique({
+				where: { deviceId: data.DeviceID },
+			});
+
+			if (userDevice) {
+				const user = await this._prisma.user.findUnique({
+					where: { id: userDevice.userId },
+				});
+
+				if (user) {
+					record.user = {
+						id: user.id,
+						name: user.name,
+						gender: user.gender as 'M' | 'F',
+						weight: user.weight,
+						height: user.height,
+						birthDate: user.birthDate.toISOString(),
+						createdAt: user.createdAt.toISOString(),
+						updatedAt: user.updatedAt.toISOString(),
+						deviceId: data.DeviceID,
+					};
+				}
+			}
+		} catch (error) {
+			this.logger.error('Erro ao buscar usuário para o device:', error);
+		}
 
 		this.cache.set(data.DeviceID, record);
 		return record;
@@ -199,25 +216,51 @@ export class AntService implements OnModuleInit {
 		}
 	}
 
+	private async checkLessonStatusBeforeSaving(record: HeartRateData): Promise<void> {
+		try {
+			// Buscar a lesson mais recente do usuário
+			const lesson = await this._prisma.lesson.findFirst({
+				orderBy: { createdAt: 'desc' },
+			});
+
+			// Se a lesson tem status ENDED, não salva os dados
+			if (!lesson || lesson?.status === 'ENDED') {
+				this.logger.log(`Lesson com status ENDED encontrada. Ignorando dados do device ${record.deviceId}`);
+				return;
+			}
+
+			// Caso contrário, salva normalmente
+			await this.upsertMongo(record);
+		} catch (error) {
+			this.logger.error('Erro ao verificar status da lesson:', error);
+		}
+	}
+
 	private openStick(stick: AntStick, stickId: number): void {
 		const sensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
 		let devId = 0;
 
 		sensor.on('hbdata', (data: AntDeviceData) => {
-			const record = this.updateCache(stickId, data);
-			if (!record) return;
+			void this.updateCache(stickId, data)
+				.then((record) => {
+					if (!record) return;
 
-			void this.upsertMongo(record).catch((err) => {
-				this.logger.error('Erro ao inserir no MongoDB:', err);
-			});
+					// Verificar se a lesson está com status ENDED antes de salvar
+					void this.checkLessonStatusBeforeSaving(record).catch((err) => {
+						this.logger.error('Erro ao verificar status da lesson:', err);
+					});
 
-			if (data.DeviceID !== 0 && devId === 0) {
-				devId = data.DeviceID;
-				sensor.detach();
-				sensor.once('detached', () => {
-					sensor.attach(0, devId);
+					if (data.DeviceID !== 0 && devId === 0) {
+						devId = data.DeviceID;
+						sensor.detach();
+						sensor.once('detached', () => {
+							sensor.attach(0, devId);
+						});
+					}
+				})
+				.catch((err) => {
+					this.logger.error('Erro ao atualizar cache:', err);
 				});
-			}
 		});
 
 		stick.on('startup', () => {
