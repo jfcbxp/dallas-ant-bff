@@ -121,6 +121,8 @@ export class LessonService {
 
 			await this.calculateAndStoreLessonResult(updatedLesson.id);
 
+			await this._prisma.userDevice.deleteMany({});
+
 			this.logger.log('Lesson ended successfully');
 
 			return {
