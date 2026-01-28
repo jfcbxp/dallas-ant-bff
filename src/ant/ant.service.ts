@@ -17,8 +17,7 @@ export class AntService implements OnModuleInit {
 	}
 
 	onModuleInit(): void {
-		this.openStick(new (Ant as unknown as AntModule).GarminStick2(), 1);
-		this.openStick(new (Ant as unknown as AntModule).GarminStick3(), 2);
+		this.openStick(new (Ant as unknown as AntModule).GarminStick2());
 	}
 
 	getAll(): HeartRateData[] {
@@ -236,12 +235,11 @@ export class AntService implements OnModuleInit {
 		}
 	}
 
-	private openStick(stick: AntStick, stickId: number): void {
+	private openStick(stick: AntStick): void {
 		const sensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
-		let devId = 0;
 
 		sensor.on('hbdata', (data: AntDeviceData) => {
-			void this.updateCache(stickId, data)
+			void this.updateCache(data.DeviceID, data)
 				.then((record) => {
 					if (!record) return;
 
@@ -250,11 +248,10 @@ export class AntService implements OnModuleInit {
 						this.logger.error('Erro ao verificar status da lesson:', err);
 					});
 
-					if (data.DeviceID !== 0 && devId === 0) {
-						devId = data.DeviceID;
+					if (data.DeviceID !== 0) {
 						sensor.detach();
 						sensor.once('detached', () => {
-							sensor.attach(0, devId);
+							sensor.attach(0, data.DeviceID === 44352 ? 41990 : 44352);
 						});
 					}
 				})
