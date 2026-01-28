@@ -237,31 +237,24 @@ export class AntService implements OnModuleInit {
 
 	private openStick(stick: AntStick): void {
 		const sensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
+		const sensor2: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
+		const sensor3: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
 
 		sensor.on('hbdata', (data: AntDeviceData) => {
-			void this.updateCache(data.DeviceID, data)
-				.then((record) => {
-					if (!record) return;
+			this.handleHeartRateData(data);
+		});
 
-					// Verificar se a lesson está com status ENDED antes de salvar
-					void this.checkLessonStatusBeforeSaving(record).catch((err) => {
-						this.logger.error('Erro ao verificar status da lesson:', err);
-					});
-
-					if (data.DeviceID !== 0) {
-						sensor.detach();
-						sensor.once('detached', () => {
-							sensor.attach(0, data.DeviceID === 44352 ? 41990 : 44352);
-						});
-					}
-				})
-				.catch((err) => {
-					this.logger.error('Erro ao atualizar cache:', err);
-				});
+		sensor2.on('hbdata', (data: AntDeviceData) => {
+			this.handleHeartRateData(data);
+		});
+		sensor3.on('hbdata', (data: AntDeviceData) => {
+			this.handleHeartRateData(data);
 		});
 
 		stick.on('startup', () => {
-			sensor.attach(0, 0);
+			sensor.attach(0, 44352);
+			sensor2.attach(1, 41990);
+			sensor3.attach(2, 41923);
 		});
 
 		stick.openAsync((err: Error | null) => {
@@ -271,5 +264,20 @@ export class AntService implements OnModuleInit {
 				// Stick found
 			}
 		});
+	}
+
+	private handleHeartRateData(data: AntDeviceData): void {
+		void this.updateCache(data.DeviceID, data)
+			.then((record) => {
+				if (!record) return;
+
+				// Verificar se a lesson está com status ENDED antes de salvar
+				void this.checkLessonStatusBeforeSaving(record).catch((err) => {
+					this.logger.error('Erro ao verificar status da lesson:', err);
+				});
+			})
+			.catch((err) => {
+				this.logger.error('Erro ao atualizar cache:', err);
+			});
 	}
 }
