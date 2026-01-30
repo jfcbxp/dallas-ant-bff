@@ -11,6 +11,9 @@ export class AntService implements OnModuleInit {
 	private readonly logger = new Logger(AntService.name);
 
 	private readonly _prisma: PrismaService;
+	private stick: AntStick | null = null;
+	private sensors: Map<number, { sensor: HeartRateSensor; deviceId: number; channel: number }> = new Map();
+	private readonly RECONNECT_DELAY = 2000; // 2 seconds
 
 	constructor(private readonly prisma: PrismaService) {
 		this._prisma = prisma;
@@ -236,34 +239,90 @@ export class AntService implements OnModuleInit {
 	}
 
 	private openStick(stick: AntStick): void {
-		const sensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
-		const sensor2: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
-		const sensor3: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
+		this.stick = stick;
 
-		sensor.on('hbdata', (data: AntDeviceData) => {
-			this.handleHeartRateData(data);
-		});
+		// Configuração dos sensores com seus respectivos canais e device IDs
+		const sensorConfigs = [
+			{ channel: 0, deviceId: 44352 },
+			{ channel: 1, deviceId: 41990 },
+			{ channel: 2, deviceId: 41923 },
+		];
 
-		sensor2.on('hbdata', (data: AntDeviceData) => {
-			this.handleHeartRateData(data);
-		});
-		sensor3.on('hbdata', (data: AntDeviceData) => {
-			this.handleHeartRateData(data);
+		// Criar e configurar cada sensor
+		sensorConfigs.forEach((config) => {
+			this.setupSensor(stick, config.channel, config.deviceId);
 		});
 
 		stick.on('startup', () => {
-			sensor.attach(0, 44352);
-			sensor2.attach(1, 41990);
-			sensor3.attach(2, 41923);
+			this.logger.log('ANT+ Stick iniciado, conectando sensores...');
+			// Anexar todos os sensores quando o stick iniciar
+			this.sensors.forEach((sensorInfo) => {
+				this.logger.log(`Conectando sensor no canal ${sensorInfo.channel} para device ${sensorInfo.deviceId}`);
+				sensorInfo.sensor.attach(sensorInfo.channel, sensorInfo.deviceId);
+			});
 		});
 
 		stick.openAsync((err: Error | null) => {
 			if (err) {
-				// Error opening stick
+				this.logger.error('Erro ao abrir ANT+ Stick:', err);
 			} else {
-				// Stick found
+				this.logger.log('ANT+ Stick encontrado e aberto com sucesso');
 			}
 		});
+	}
+
+	private setupSensor(stick: AntStick, channel: number, deviceId: number): void {
+		const sensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(stick);
+
+		// Armazenar informações do sensor para reconexão
+		this.sensors.set(channel, { sensor, deviceId, channel });
+
+		// Listener para dados de frequência cardíaca
+		sensor.on('hbdata', (data: AntDeviceData) => {
+			this.handleHeartRateData(data);
+		});
+
+		// Listener para detecção de desconexão
+		sensor.once('detached', () => {
+			this.logger.warn(`Sensor desconectado no canal ${channel} (Device ID: ${deviceId}). Tentando reconectar...`);
+			this.handleSensorDetached(channel, deviceId);
+		});
+	}
+
+	private handleSensorDetached(channel: number, deviceId: number): void {
+		// Aguardar um pouco antes de tentar reconectar
+		setTimeout(() => {
+			const sensorInfo = this.sensors.get(channel);
+			if (sensorInfo && this.stick) {
+				this.logger.log(`Reconectando sensor no canal ${channel} para device ${deviceId}...`);
+
+				// Recriar o sensor
+				const newSensor: HeartRateSensor = new (Ant as unknown as AntModule).HeartRateSensor(this.stick);
+
+				// Atualizar o sensor armazenado
+				this.sensors.set(channel, { sensor: newSensor, deviceId, channel });
+
+				// Configurar listeners novamente
+				newSensor.on('hbdata', (data: AntDeviceData) => {
+					this.handleHeartRateData(data);
+				});
+
+				newSensor.once('detached', () => {
+					this.logger.warn(`Sensor desconectado novamente no canal ${channel} (Device ID: ${deviceId}). Tentando reconectar...`);
+					this.handleSensorDetached(channel, deviceId);
+				});
+
+				// Tentar anexar o sensor
+				try {
+					newSensor.attach(channel, deviceId);
+					this.logger.log(`Sensor reconectado com sucesso no canal ${channel}`);
+				} catch (error) {
+					this.logger.error(`Erro ao reconectar sensor no canal ${channel}:`, error);
+					// Tentar novamente após um intervalo maior
+					setTimeout(() => this.handleSensorDetached(channel, deviceId), 5000);
+				}
+			}
+		}, this.RECONNECT_DELAY);
 	}
 
 	private handleHeartRateData(data: AntDeviceData): void {
