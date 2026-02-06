@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AntService } from '../ant/ant.service';
+import { HeartRateUtil } from '../utils/heart-rate.util';
 
 interface ZoneStats {
 	zone1: number; // segundos
@@ -149,22 +150,6 @@ export class LessonService {
      CÁLCULO FISIOLÓGICO E GAMIFICAÇÃO (MELHORADO)
      ====================================================== */
 
-	private calculateAge(birthDate: string): number {
-		const diff = Date.now() - new Date(birthDate).getTime();
-		return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-	}
-
-	private calculateFcMax(user: UserInfo): number {
-		const age = this.calculateAge(user.birthDate);
-
-		// Fórmula ajustada por sexo
-		if (user.gender === 'F') {
-			return 206 - 0.88 * age;
-		}
-
-		return 208 - 0.7 * age;
-	}
-
 	private resolveZone(hr: number, fcMax: number): keyof ZoneStats {
 		const pct = (hr / fcMax) * 100;
 
@@ -194,7 +179,7 @@ export class LessonService {
 		records: HeartRateRecordWithDevice[],
 		user: UserInfo,
 	): { zones: ZoneStats; points: number; avgHeartRate: number } {
-		const fcMax = this.calculateFcMax(user);
+		const fcMax = HeartRateUtil.calculateFcMax(user.gender as 'M' | 'F', user.birthDate);
 
 		const zones: ZoneStats = {
 			zone1: 0,

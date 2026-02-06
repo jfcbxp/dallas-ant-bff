@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HeartRateData, AntDeviceData, AvailableDevice, HeartRateCurrentDb } from './interfaces/heart-rate.interface';
 import { AntStick, HeartRateSensor, AntModule } from './interfaces/ant-types.interface';
 import { LinkDeviceDto, UserDeviceResponse } from '../users/interfaces/user-types.interface';
+import { HeartRateUtil } from '../utils/heart-rate.util';
 import * as Ant from 'ant-plus';
 
 @Injectable()
@@ -80,6 +81,7 @@ export class AntService implements OnModuleInit {
 								createdAt: user.createdAt.toISOString(),
 								updatedAt: user.updatedAt.toISOString(),
 								deviceId: device.deviceId,
+								zones: HeartRateUtil.calculateZones(user.gender as 'M' | 'F', user.birthDate.toISOString()),
 							};
 						}
 					}
@@ -167,6 +169,7 @@ export class AntService implements OnModuleInit {
 						createdAt: user.createdAt.toISOString(),
 						updatedAt: user.updatedAt.toISOString(),
 						deviceId: data.DeviceID,
+						zones: HeartRateUtil.calculateZones(user.gender as 'M' | 'F', user.birthDate.toISOString()),
 					};
 				}
 			}

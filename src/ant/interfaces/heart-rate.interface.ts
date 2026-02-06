@@ -64,4 +64,11 @@ export interface UserWithDeviceId {
 	createdAt: string;
 	updatedAt: string;
 	deviceId: number;
+	zones?: {
+		zone1: { min: number; max: number };
+		zone2: { min: number; max: number };
+		zone3: { min: number; max: number };
+		zone4: { min: number; max: number };
+		zone5: { min: number; max: number };
+	};
 }
