@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AntService } from '../ant/ant.service';
 
 interface ZoneStats {
 	zone1: number; // segundos
@@ -60,7 +61,10 @@ export interface LessonResultResponse {
 export class LessonService {
 	private readonly logger = new Logger(LessonService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly antService: AntService,
+	) {}
 
 	async startLesson(): Promise<{ lessonId: string; startedAt: Date }> {
 		try {
@@ -97,6 +101,7 @@ export class LessonService {
 
 		await this.calculateAndStoreLessonResult(updatedLesson.id);
 		await this.prisma.userDevice.deleteMany({});
+		this.antService.clearCache();
 
 		return {
 			lessonId: updatedLesson.id,

@@ -12,7 +12,7 @@ export class AntService implements OnModuleInit {
 
 	private readonly _prisma: PrismaService;
 	private stick: AntStick | null = null;
-	private sensors: Map<number, { sensor: HeartRateSensor; deviceId: number; channel: number }> = new Map();
+	private readonly sensors: Map<number, { sensor: HeartRateSensor; deviceId: number; channel: number }> = new Map();
 	private readonly RECONNECT_DELAY = 2000; // 2 seconds
 
 	constructor(private readonly prisma: PrismaService) {
@@ -29,6 +29,10 @@ export class AntService implements OnModuleInit {
 
 	getByDeviceId(deviceId: number): HeartRateData | undefined {
 		return this.cache.get(deviceId);
+	}
+
+	clearCache(): void {
+		this.cache.clear();
 	}
 
 	async getAvailableDevices(): Promise<AvailableDevice[]> {

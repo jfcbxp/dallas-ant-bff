@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, UserResponse, UserDeviceResponse, UserDevice, User, UserWithDeviceId } from './interfaces/user-types.interface';
+import { CreateUserDto, UserResponse, User, UserWithDeviceId } from './interfaces/user-types.interface';
 
 @Injectable()
 export class UsersService {
@@ -78,17 +78,6 @@ export class UsersService {
 			birthDate: user.birthDate.toISOString(),
 			createdAt: user.createdAt.toISOString(),
 			updatedAt: user.updatedAt.toISOString(),
-		};
-		return record;
-	}
-
-	private mapUserDeviceToResponse(userDevice: UserDevice): UserDeviceResponse {
-		const record: UserDeviceResponse = {
-			id: userDevice.id,
-			userId: userDevice.userId,
-			deviceId: userDevice.deviceId,
-			linkedAt: userDevice.linkedAt.toISOString(),
-			updatedAt: userDevice.updatedAt.toISOString(),
 		};
 		return record;
 	}
