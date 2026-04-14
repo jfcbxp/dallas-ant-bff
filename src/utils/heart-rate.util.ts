@@ -12,11 +12,11 @@ export class HeartRateUtil {
 	static calculateZones(gender: 'M' | 'F', birthDate: string) {
 		const fcMax = this.calculateFcMax(gender, birthDate);
 		return {
-			zone1: { min: Math.round(fcMax * 0.5), max: Math.round(fcMax * 0.6) },
-			zone2: { min: Math.round(fcMax * 0.6), max: Math.round(fcMax * 0.7) },
-			zone3: { min: Math.round(fcMax * 0.7), max: Math.round(fcMax * 0.8) },
-			zone4: { min: Math.round(fcMax * 0.8), max: Math.round(fcMax * 0.9) },
-			zone5: { min: Math.round(fcMax * 0.9), max: Math.round(fcMax) },
+			zone1: { min: 0, max: Math.round(fcMax * 0.6) },
+			zone2: { min: Math.round(fcMax * 0.61), max: Math.round(fcMax * 0.7) },
+			zone3: { min: Math.round(fcMax * 0.71), max: Math.round(fcMax * 0.8) },
+			zone4: { min: Math.round(fcMax * 0.81), max: Math.round(fcMax * 0.9) },
+			zone5: { min: Math.round(fcMax * 0.91), max: Math.round(fcMax) },
 		};
 	}
 }
