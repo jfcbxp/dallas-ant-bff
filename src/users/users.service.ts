@@ -45,7 +45,9 @@ export class UsersService {
 		try {
 			this.logger.log('Fetching all users with devices');
 
-			const users = await this._prisma.user.findMany();
+			const users = await this._prisma.user.findMany({
+				orderBy: { name: 'asc' },
+			});
 
 			const result: UserWithDeviceId[] = [];
 
