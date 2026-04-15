@@ -3,6 +3,11 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { AntService } from './../src/ant/ant.service';
+
+// Mock ant-plus and USB dependencies
+jest.mock('ant-plus');
+jest.mock('usb');
 
 describe('AppController (e2e)', () => {
 	let app: INestApplication<App>;
@@ -10,10 +15,20 @@ describe('AppController (e2e)', () => {
 	beforeEach(async () => {
 		const moduleFixture: TestingModule = await Test.createTestingModule({
 			imports: [AppModule],
-		}).compile();
+		})
+			.overrideProvider(AntService)
+			.useValue({
+				onModuleInit: jest.fn(),
+				getAll: jest.fn().mockReturnValue([]),
+			})
+			.compile();
 
 		app = moduleFixture.createNestApplication();
 		await app.init();
+	});
+
+	afterEach(async () => {
+		await app.close();
 	});
 
 	it('/ (GET)', () => {
